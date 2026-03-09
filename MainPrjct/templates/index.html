@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digital Classroom Supervision</title>
+  <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+        .app-wrapper { width: 100%; height: 100%; display: flex; overflow: hidden; }
+        .auth-screen { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 20px; }
+        .auth-container { width: 100%; max-width: 420px; background: #1e293b; border-radius: 12px; padding: 40px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); border: 1px solid #334155; }
+        .auth-header { text-align: center; margin-bottom: 40px; }
+        .logo { font-size: 48px; margin-bottom: 16px; }
+        .auth-header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; background: linear-gradient(135deg, #60a5fa, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .auth-header p { color: #94a3b8; font-size: 14px; }
+        .role-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 32px; }
+        .role-btn { padding: 16px; border: 2px solid #334155; background: transparent; color: #cbd5e1; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s ease; }
+        .role-btn:hover { border-color: #60a5fa; background: rgba(96, 165, 250, 0.1); }
+        .role-btn.active { background: #60a5fa; color: white; border-color: #60a5fa; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; color: #94a3b8; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .form-group input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; font-size: 14px; }
+        .form-group input:focus { outline: none; border-color: #60a5fa; background: #1a2332; }
+        .login-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #60a5fa, #3b82f6); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 12px; }
+        .login-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(96, 165, 250, 0.3); }
+        .guest-btn { width: 100%; padding: 12px; background: transparent; color: #60a5fa; border: 1px solid #60a5fa; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+        .guest-btn:hover { background: rgba(96, 165, 250, 0.1); }
+        .teacher-screen, .student-screen { width: 100%; height: 100%; display: flex; flex-direction: column; }
+        .screen-header { background: linear-gradient(135deg, #1e293b, #0f172a); padding: 20px 30px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+        .header-title { display: flex; align-items: center; gap: 12px; }
+        .header-title h2 { font-size: 20px; font-weight: 700; }
+        .header-info { display: flex; gap: 20px; align-items: center; font-size: 13px; color: #94a3b8; }
+        .header-actions { display: flex; gap: 10px; }
+        .btn-icon { padding: 8px 12px; background: #334155; border: none; color: #cbd5e1; border-radius: 6px; cursor: pointer; font-size: 12px; }
+        .btn-icon:hover { background: #475569; }
+        .btn-danger { background: #ef4444; color: white; }
+        .screen-content { flex: 1; overflow: auto; padding: 30px; }
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; max-width: 1400px; margin: 0 auto; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 24px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .card-title { font-size: 16px; font-weight: 700; }
+        .card-subtitle { font-size: 12px; color: #94a3b8; text-transform: uppercase; margin-bottom: 20px; letter-spacing: 0.5px; }
+        .class-form { display: flex; flex-direction: column; gap: 16px; }
+        .class-form input, .class-form textarea { padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; font-size: 13px; }
+        .class-form input:focus { outline: none; border-color: #60a5fa; background: #1a2332; }
+        .btn-primary { padding: 12px; background: linear-gradient(135deg, #60a5fa, #3b82f6); color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(96, 165, 250, 0.3); }
+        .code-display { background: linear-gradient(135deg, #0f172a, #1a2332); border: 2px dashed #60a5fa; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; }
+        .code-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+        .code-value { font-size: 42px; font-weight: 800; letter-spacing: 8px; color: #60a5fa; font-family: 'Courier New', monospace; margin: 16px 0; }
+        .code-copy-btn { padding: 10px 20px; background: #60a5fa; color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .students-list { display: flex; flex-direction: column; gap: 12px; }
+        .student-item { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 16px; display: flex; align-items: center; justify-content: space-between; }
+        .student-info { display: flex; align-items: center; gap: 12px; flex: 1; }
+        .student-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #60a5fa, #818cf8); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: 18px; }
+        .student-details h4 { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+        .student-details p { font-size: 11px; color: #94a3b8; }
+        .student-status { display: flex; gap: 8px; align-items: center; }
+        .status-badge { display: flex; align-items: center; gap: 4px; padding: 6px 10px; background: #334155; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
+        .status-dot.danger { background: #ef4444; }
+        .alert-notification { background: linear-gradient(135deg, #7f1d1d, #991b1b); border: 1px solid #dc2626; border-radius: 8px; padding: 16px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 12px; animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .alert-icon { font-size: 20px; flex-shrink: 0; }
+        .alert-content h4 { font-size: 13px; font-weight: 700; margin-bottom: 4px; color: #fca5a5; }
+        .alert-content p { font-size: 12px; color: #fbcaca; }
+        .classroom-layout { display: grid; grid-template-columns: 1fr 280px; gap: 20px; max-width: 1600px; margin: 0 auto; }
+        .video-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+        .video-tile { background: #0f172a; border-radius: 8px; aspect-ratio: 1; overflow: hidden; border: 2px solid #334155; display: flex; align-items: center; justify-content: center; }
+        .video-placeholder { width: 100%; height: 100%; background: linear-gradient(135deg, #1e293b, #0f172a); display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b; }
+        .video-icon { font-size: 48px; margin-bottom: 12px; }
+        .video-name { font-size: 13px; font-weight: 600; text-align: center; }
+        .video-tile.teacher { border-color: #60a5fa; box-shadow: 0 0 20px rgba(96, 165, 250, 0.2); }
+        .controls-panel { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 16px; height: fit-content; }
+        .control-group h3 { font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 12px; }
+        .control-buttons { display: flex; flex-direction: column; gap: 8px; }
+        .control-btn { padding: 12px; background: #0f172a; border: 1px solid #334155; color: #cbd5e1; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .control-btn:hover { background: #1a2332; border-color: #60a5fa; }
+        .control-btn.active { background: #60a5fa; color: white; border-color: #60a5fa; }
+        .control-btn.disabled { opacity: 0.5; cursor: not-allowed; }
+        .leave-btn { padding: 12px; background: #ef4444; color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .leave-btn:hover { background: #dc2626; }
+        .join-container { display: flex; flex-direction: column; gap: 20px; max-width: 500px; margin: 0 auto; }
+        .join-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 30px; }
+        .join-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+        .join-card p { color: #94a3b8; font-size: 13px; margin-bottom: 24px; }
+        .code-input-group { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+        .code-input-group label { font-size: 12px; font-weight: 600; color: #cbd5e1; text-transform: uppercase; letter-spacing: 0.5px; }
+        .code-input { padding: 16px; background: #0f172a; border: 2px solid #334155; border-radius: 8px; color: #e2e8f0; font-size: 18px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; text-align: center; font-family: 'Courier New', monospace; }
+        .code-input:focus { outline: none; border-color: #60a5fa; background: #1a2332; }
+        .join-name-input { padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; font-size: 13px; }
+        .join-name-input:focus { outline: none; border-color: #60a5fa; }
+        .join-btn { padding: 16px; background: linear-gradient(135deg, #60a5fa, #3b82f6); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+        .join-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(96, 165, 250, 0.3); }
+        .info-message { background: rgba(30, 144, 255, 0.1); border: 1px solid #3b82f6; border-radius: 6px; padding: 12px; font-size: 12px; color: #93c5fd; }
+        .empty-state { text-align: center; padding: 40px 20px; color: #64748b; }
+        .empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+        .empty-state h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; color: #cbd5e1; }
+        .empty-state p { font-size: 13px; color: #94a3b8; }
+        .section-divider { height: 1px; background: #334155; margin: 20px 0; }
+        .notification-badge { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: #ef4444; color: white; border-radius: 50%; font-size: 11px; font-weight: 700; }
+    </style>
+ </head>
+ <body>
+  <div class="app-wrapper" id="app">
+   <div class="auth-screen" id="authScreen" style="display: flex;">
+    <div class="auth-container">
+     <div class="auth-header"><div class="logo">🎓</div>
+      <h1>Digital Classroom Supervision</h1>
+      <p>Advanced Monitoring Platform</p>
+     </div>
+     <div class="role-buttons">
+      <button class="role-btn active" id="teacherRoleBtn">👨‍🏫 Teacher</button>
+      <button class="role-btn" id="studentRoleBtn">👨‍🎓 Student</button>
+     </div>
+     <form id="authForm" class="class-form">
+      <div class="form-group"><label>Full Name</label><input type="text" id="userName" placeholder="Enter your name" required></div>
+      <div class="form-group"><label>Email Address</label><input type="email" id="userEmail" placeholder="your@email.com" required></div>
+      <button type="submit" class="login-btn">Enter Classroom</button>
+      <button type="button" class="guest-btn" id="guestBtn">Continue as Guest</button>
+     </form>
+    </div>
+   </div>
+   <div class="teacher-screen" id="teacherScreen" style="display: none;">
+    <div class="screen-header">
+     <div class="header-title"><span>👨‍🏫</span><h2>Teacher Dashboard</h2></div>
+     <div class="header-info"><span id="teacherName"></span> <span>•</span> <span id="classStatus">No Active Class</span></div>
+     <div class="header-actions"><button class="btn-icon" id="logoutTeacherBtn">📤 Logout</button></div>
+    </div>
+    <div class="screen-content">
+     <div class="dashboard-grid">
+      <div class="card">
+       <div class="card-header"><h3 class="card-title">Create New Class</h3></div>
+       <p class="card-subtitle">Class Details</p>
+       <form id="createClassForm" class="class-form">
+        <input type="text" id="className" placeholder="e.g., Mathematics 101" required>
+        <input type="text" id="classSubject" placeholder="Subject">
+        <textarea id="classDescription" placeholder="Class description (optional)"></textarea>
+        <button type="submit" class="btn-primary">Generate Class Code</button>
+       </form>
+       <div id="generatedClass" style="display: none; margin-top: 24px;">
+        <p class="card-subtitle">Active Class</p>
+        <div class="code-display">
+         <div class="code-label">Class Code</div>
+         <div class="code-value" id="classCodeDisplay">XXXXX</div>
+         <button type="button" class="code-copy-btn" id="copyCodeBtn">📋 Copy Code</button>
+        </div>
+        <div style="background: #0f172a; border-radius: 6px; padding: 16px; margin-top: 16px;">
+         <p style="font-size: 12px; color: #94a3b8;"><strong>Class Name:</strong> <span id="activeClassName"></span></p>
+         <p style="font-size: 12px; color: #94a3b8;"><strong>Status:</strong> <span style="color: #22c55e;">● Active</span></p>
+         <button type="button" class="btn-primary" id="endClassBtn" style="width: 100%; background: #ef4444; margin-top: 12px;">End Class Session</button>
+        </div>
+       </div>
+      </div>
+      <div class="card">
+       <div class="card-header"><h3 class="card-title">Monitor Students</h3><span class="notification-badge" id="violationCount">0</span></div>
+       <div id="alertsContainer"></div>
+       <p class="card-subtitle">Joined Students</p>
+       <div id="studentsContainer" class="students-list">
+        <div class="empty-state"><div class="empty-state-icon">👥</div><h3>No Students Yet</h3><p>Students will appear here after joining</p></div>
+       </div>
+      </div>
+     </div>
+    </div>
+   </div>
+   <div class="student-screen" id="studentJoinScreen" style="display: none;">
+    <div class="screen-header">
+     <div class="header-title"><span>👨‍🎓</span><h2>Join Class</h2></div>
+     <div class="header-actions"><button class="btn-icon" id="logoutStudentBtn">📤 Logout</button></div>
+    </div>
+    <div class="screen-content" style="display: flex; align-items: center; justify-content: center;">
+     <div class="join-container">
+      <div class="join-card">
+       <h2>📚 Join a Classroom</h2>
+       <p>Enter the class code provided by your teacher.</p>
+       <form id="joinClassForm" class="code-input-group">
+        <div><label>Your Name</label><input type="text" id="studentName" class="join-name-input" placeholder="Enter your name" required></div>
+<div><label>Class Code</label><input type="text" id="classCodeInput" class="code-input" placeholder="XXXXXX" maxlength="6" required></div>
+        <button type="submit" class="join-btn">Join Classroom</button>
+       </form>
+       <div class="info-message">ℹ️ Your video will be <strong>always on</strong> during class.</div>
+      </div>
+     </div>
+    </div>
+   </div>
+   <div class="student-screen" id="studentClassroomScreen" style="display: none;">
+    <div class="screen-header">
+     <div class="header-title"><span>👨‍🎓</span><h2 id="classroomTitle">Classroom</h2></div>
+     <div class="header-info"><span id="studentNameDisplay"></span> <span>•</span> <span id="attendanceStatus">In Session</span></div>
+     <div class="header-actions"><button class="btn-icon" id="leaveClassBtn" style="background: #ef4444; color: white;">🚪 Leave Class</button></div>
+    </div>
+    <div class="screen-content">
+     <div class="classroom-layout">
+      <div class="video-grid" id="videoGrid">
+       <div class="video-tile teacher"><div class="video-placeholder"><div class="video-icon">🎥</div><div class="video-name">Teacher</div></div></div>
+      </div>
+      <div class="controls-panel">
+       <div class="control-group"><h3>📹 Video</h3><div class="control-buttons"><button class="control-btn disabled" id="videoToggleBtn"><span>🎥</span><span>Always On</span></button></div></div>
+       <div class="control-group"><h3>🎙️ Audio</h3><div class="control-buttons"><button class="control-btn active" id="audioToggleBtn"><span>🎙️</span><span>Microphone On</span></button></div></div>
+       <div class="section-divider"></div>
+       <button class="leave-btn" id="leaveClassBtn2">🚪 Leave Classroom</button>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div>
+  <script>
+        var currentUser = null;
+        var currentRole = 'teacher';
+        var activeClass = null;
+        var joinedStudents = [];
+        var violations = [];
+        var currentStudentId = null;
+        var currentClassId = null;
+        var idleTime = 0;
+        var idleCheckInterval = null;
+        var lastActivityTime = Date.now();
+        var isPageVisible = true;
+        var teacherPollingInterval = null;
+        var lastNotificationTime = '0';
+        var teacherActiveClassId = null;
+
+        var authScreen = document.getElementById('authScreen');
+        var teacherScreen = document.getElementById('teacherScreen');
+        var studentJoinScreen = document.getElementById('studentJoinScreen');
+        var studentClassroomScreen = document.getElementById('studentClassroomScreen');
+
+        document.getElementById('teacherRoleBtn').addEventListener('click', function() {
+            currentRole = 'teacher';
+            document.querySelectorAll('.role-btn').forEach(function(btn) { btn.classList.remove('active'); });
+            document.getElementById('teacherRoleBtn').classList.add('active');
+        });
+
+        document.getElementById('studentRoleBtn').addEventListener('click', function() {
+            currentRole = 'student';
+            document.querySelectorAll('.role-btn').forEach(function(btn) { btn.classList.remove('active'); });
+            document.getElementById('studentRoleBtn').classList.add('active');
+        });
+
+        document.getElementById('authForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var name = document.getElementById('userName').value;
+            var email = document.getElementById('userEmail').value;
+            currentUser = { name: name, email: email, role: currentRole };
+            enterClassroom();
+        });
+
+        document.getElementById('guestBtn').addEventListener('click', function() {
+            currentUser = { name: 'Guest User', email: 'guest@classroom.local', role: currentRole };
+            enterClassroom();
+        });
+
+        function enterClassroom() {
+            authScreen.style.display = 'none';
+            if (currentRole === 'teacher') {
+                teacherScreen.style.display = 'flex';
+                document.getElementById('teacherName').textContent = currentUser.name;
+                setupTeacherListeners();
+            } else {
+                studentJoinScreen.style.display = 'flex';
+                setupStudentListeners();
+            }
+        }
+
+        function setupTeacherListeners() {
+            document.getElementById('createClassForm').addEventListener('submit', function(e) { e.preventDefault(); createClass(); });
+            document.getElementById('logoutTeacherBtn').addEventListener('click', logout);
+            document.getElementById('copyCodeBtn').addEventListener('click', copyClassCode);
+            document.getElementById('endClassBtn').addEventListener('click', endClass);
+        }
+
+        function createClass() {
+            var className = document.getElementById('className').value;
+            fetch("http://127.0.0.1:5050/create_class", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ class_name: className })
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                document.getElementById('generatedClass').style.display = 'block';
+                document.getElementById('classCodeDisplay').textContent = data.class_code;
+                document.getElementById('activeClassName').textContent = className;
+                document.getElementById('classStatus').textContent = 'Active: ' + className;
+                activeClass = { name: className, code: data.class_code };
+                startTeacherPolling(data.class_id);
+            })
+            .catch(function(err) { alert("Error creating class"); console.error(err); });
+        }
+
+        function copyClassCode() {
+            var code = document.getElementById('classCodeDisplay').textContent;
+            navigator.clipboard.writeText(code).then(function() {
+                var btn = document.getElementById('copyCodeBtn');
+                var originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                setTimeout(function() { btn.textContent = originalText; }, 2000);
+            });
+        }
+
+        function endClass() {
+            if (confirm('End this class session?')) {
+                activeClass = null;
+                joinedStudents = [];
+                violations = [];
+                document.getElementById('generatedClass').style.display = 'none';
+                document.getElementById('classStatus').textContent = 'No Active Class';
+                if (teacherPollingInterval) { clearInterval(teacherPollingInterval); teacherPollingInterval = null; }
+                updateStudentsDisplay();
+                updateAlertsDisplay();
+            }
+        }
+
+        function updateStudentsDisplay() {
+            var container = document.getElementById('studentsContainer');
+            if (joinedStudents.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👥</div><h3>No Students Yet</h3><p>Students will appear here after joining</p></div>';
+                return;
+            }
+            container.innerHTML = joinedStudents.map(function(s) {
+                var minutesAgo = Math.floor((new Date() - new Date(s.joinedAt)) / 60000);
+                return '<div class="student-item"><div class="student-info"><div class="student-avatar">' + s.name.charAt(0) + '</div><div class="student-details"><h4>' + s.name + '</h4><p>Joined ' + minutesAgo + ' min ago</p></div></div><div class="student-status"><div class="status-badge"><div class="status-dot' + (s.violations > 0 ? ' danger' : '') + '"></div>' + (s.violations > 0 ? s.violations + ' violation' + (s.violations > 1 ? 's' : '') : 'Active') + '</div></div></div>';
+            }).join('');
+        }
+
+        function updateAlertsDisplay() {
+            var container = document.getElementById('alertsContainer');
+            document.getElementById('violationCount').textContent = violations.length;
+            if (violations.length === 0) { container.innerHTML = ''; return; }
+            container.innerHTML = violations.map(function(v) {
+                return '<div class="alert-notification"><div class="alert-icon">⚠️</div><div class="alert-content"><h4>' + v.studentName + '</h4><p>' + v.studentName + ' ' + v.message + ' at ' + new Date(v.timestamp).toLocaleTimeString() + '</p></div></div>';
+            }).join('');
+        }
+
+        function setupStudentListeners() {
+            document.getElementById('joinClassForm').addEventListener('submit', function(e) { e.preventDefault(); joinClass(); });
+            document.getElementById('logoutStudentBtn').addEventListener('click', logout);
+        }
+
+        function joinClass() {
+            var classCode = document.getElementById('classCodeInput').value.toUpperCase();
+            var studentName = document.getElementById('studentName').value;
+            fetch("http://127.0.0.1:5050/join_class", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ student_name: studentName, class_code: classCode })
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.error) { alert(data.error); }
+                else {
+                    currentStudentId = data.student_id;
+                    currentClassId = data.class_id;
+                    fetch("http://127.0.0.1:5050/get_class/" + classCode)
+                    .then(function(res) { return res.json(); })
+                    .then(function(classData) {
+                        if (classData.success) {
+                            activeClass = classData.class;
+                            enterStudentClassroom();
+                        }
+                    });
+                }
+            })
+            .catch(function(err) { alert("Error joining class"); console.error(err); });
+        }
+
+        function enterStudentClassroom() {
+            studentJoinScreen.style.display = 'none';
+            studentClassroomScreen.style.display = 'flex';
+            document.getElementById('classroomTitle').textContent = activeClass.name;
+            document.getElementById('studentNameDisplay').textContent = currentUser.name;
+            setupClassroomControls();
+            setupActivityDetection();
+        }
+
+        function setupClassroomControls() {
+            document.getElementById('audioToggleBtn').addEventListener('click', toggleAudio);
+            document.getElementById('leaveClassBtn').addEventListener('click', leaveClass);
+            document.getElementById('leaveClassBtn2').addEventListener('click', leaveClass);
+        }
+
+        function toggleAudio() {
+            var btn = document.getElementById('audioToggleBtn');
+            btn.classList.toggle('active');
+            btn.innerHTML = btn.classList.contains('active') ? '<span>🎙️</span><span>Microphone On</span>' : '<span>🔇</span><span>Microphone Off</span>';
+        }
+
+        function leaveClass() {
+            if (currentStudentId && currentClassId) {
+                fetch("http://127.0.0.1:5050/leave_class", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ student_id: currentStudentId, class_id: currentClassId })
+                });
+                if (idleCheckInterval) { clearInterval(idleCheckInterval); idleCheckInterval = null; }
+            }
+            currentStudentId = null;
+            currentClassId = null;
+            idleTime = 0;
+            studentClassroomScreen.style.display = 'none';
+            studentJoinScreen.style.display = 'flex';
+            document.getElementById('classCodeInput').value = '';
+            document.getElementById('studentName').value = '';
+            document.getElementById('attendanceStatus').textContent = 'In Session';
+            document.getElementById('attendanceStatus').style.color = 'inherit';
+        }
+
+        function logout() {
+            if (teacherPollingInterval) { clearInterval(teacherPollingInterval); teacherPollingInterval = null; }
+            if (idleCheckInterval) { clearInterval(idleCheckInterval); idleCheckInterval = null; }
+            authScreen.style.display = 'flex';
+            teacherScreen.style.display = 'none';
+            studentJoinScreen.style.display = 'none';
+            studentClassroomScreen.style.display = 'none';
+            currentUser = null;
+            activeClass = null;
+            joinedStudents = [];
+            violations = [];
+            currentStudentId = null;
+            currentClassId = null;
+            document.getElementById('authForm').reset();
+            document.getElementById('createClassForm').reset();
+            document.getElementById('joinClassForm').reset();
+        }
+
+        // Activity Tracking
+        function reportActivity(eventType, eventDetails) {
+            if (!currentStudentId || !currentClassId) return;
+            fetch("http://127.0.0.1:5050/student_activity", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ student_id: currentStudentId, class_id: currentClassId, event_type: eventType, event_details: eventDetails || '' })
+            }).catch(function(err) { console.error('Activity error:', err); });
+        }
+
+        function setupActivityDetection() {
+            if (!currentStudentId || !currentClassId) return;
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden) { reportActivity('tab_switch', 'Student switched to another tab'); updateAttendanceStatus('⚠️ Tab Switched', '#f59e0b'); }
+                else { reportActivity('focus', 'Student returned'); updateAttendanceStatus('In Session', 'inherit'); }
+            });
+            window.addEventListener('blur', function() { reportActivity('window_blur', 'Window lost focus'); updateAttendanceStatus('⚠️ Window Lost Focus', '#f59e0b'); });
+            window.addEventListener('focus', function() { if (isPageVisible) { reportActivity('focus', 'Window gained focus'); updateAttendanceStatus('In Session', 'inherit'); } });
+            window.addEventListener('popstate', function() { reportActivity('back_button', 'Student pressed back button'); history.pushState(null, document.title, location.href); });
+            window.addEventListener('beforeunload', function() { reportActivity('leave_app', 'Student leaving classroom'); });
+            idleCheckInterval = setInterval(function() {
+                if (Date.now() - lastActivityTime > 60000 && idleTime === 0) { idleTime = 1; reportActivity('idle', 'Student is idle'); updateAttendanceStatus('⚠️ Idle', '#f59e0b'); }
+            }, 10000);
+            ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'].forEach(function(event) {
+                document.addEventListener(event, function() {
+                    lastActivityTime = Date.now();
+                    if (idleTime === 1) { idleTime = 0; reportActivity('focus', 'Student became active'); updateAttendanceStatus('In Session', 'inherit'); }
+                });
+            });
+        }
+
+        function updateAttendanceStatus(message, color) {
+            var statusEl = document.getElementById('attendanceStatus');
+            if (statusEl) { statusEl.textContent = message; statusEl.style.color = color; }
+        }
+
+        // Teacher Notifications
+        function startTeacherPolling(classId) {
+            teacherActiveClassId = classId;
+            teacherPollingInterval = setInterval(fetchTeacherNotifications, 2000);
+        }
+
+        function fetchTeacherNotifications() {
+            if (!teacherActiveClassId) return;
+            fetch("http://127.0.0.1:5050/teacher_notifications/" + teacherActiveClassId, { headers: { 'Last-Timestamp': lastNotificationTime } })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success && data.notifications) {
+                    if (data.active_students) {
+                        joinedStudents = data.active_students.map(function(s) { return { id: s.id, name: s.student_name, joinedAt: s.session_start, violations: s.violations }; });
+                        updateStudentsDisplay();
+                    }
+                    if (data.notifications.length > 0) {
+                        lastNotificationTime = data.notifications[0].timestamp;
+                        data.notifications.forEach(displayRealTimeAlert);
+                    }
+                }
+            })
+            .catch(function(err) { console.error('Teacher polling error:', err); });
+        }
+
+        function displayRealTimeAlert(notif) {
+            var violationMessages = { 'app_switch': 'switched to another app', 'tab_switch': 'switched browser tab', 'window_blur': 'window lost focus', 'back_button': 'pressed back button', 'idle': 'is idle', 'leave_app': 'left the classroom' };
+            var message = violationMessages[notif.event_type] || 'unknown activity';
+            var violation = { studentId: notif.student_id, studentName: notif.student_name, type: notif.event_type, message: message, timestamp: notif.timestamp };
+            violations.unshift(violation);
+            if (violations.length > 10) violations.pop();
+            updateAlertsDisplay();
+            updateStudentsDisplay();
+            setTimeout(function() { violations = violations.filter(function(v) { return v !== violation; }); updateAlertsDisplay(); }, 15000);
+        }
+  </script>
+ </body>
+</html>

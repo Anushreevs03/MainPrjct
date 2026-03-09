@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Monitoring Dashboard</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { 
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        .student-card {
+            transition: all 0.3s ease;
+        }
+        .student-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(96, 165, 250, 0.15);
+        }
+        /* Red border animation for violation students */
+        .violation-card {
+            animation: violationPulse 2s ease-in-out infinite;
+            border: 2px solid #ef4444 !important;
+        }
+        @keyframes violationPulse {
+            0%, 100% { 
+                border-color: #ef4444;
+                box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+            }
+            50% { 
+                border-color: #f87171;
+                box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+            }
+        }
+        /* Fade out animation for removed students */
+        .student-removing {
+            animation: removeStudent 0.5s ease-out forwards;
+        }
+        @keyframes removeStudent {
+            to {
+                opacity: 0;
+                transform: translateX(-100px);
+            }
+        }
+        /* New student animation */
+        .student-adding {
+            animation: addStudent 0.5s ease-out;
+        }
+        @keyframes addStudent {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        .status-dot {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: #1e293b; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+        
+        // App Icons
+        const Icons = {
+            User: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
+            Clock: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+            Monitor: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>,
+            Alert: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
+            Users: () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
+            Activity: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
+            Refresh: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+        };
+
+        // Student Card Component
+        function StudentCard({ student, onViolationClick }) {
+            const [timeAgo, setTimeAgo] = useState('');
+            
+            useEffect(() => {
+                const updateTime = () => {
+                    const joined = new Date(student.joined_time);
+                    const now = new Date();
+                    const diff = Math.floor((now - joined) / 1000);
+                    
+                    if (diff < 60) setTimeAgo('Just now');
+                    else if (diff < 3600) setTimeAgo(`${Math.floor(diff / 60)} min ago`);
+                    else setTimeAgo(`${Math.floor(diff / 3600)} hr ago`);
+                };
+                
+                updateTime();
+                const interval = setInterval(updateTime, 30000);
+                return () => clearInterval(interval);
+            }, [student.joined_time]);
+
+            const formatUsageTime = (minutes) => {
+                if (minutes < 60) return `${minutes} min`;
+                const hrs = Math.floor(minutes / 60);
+                const mins = minutes % 60;
+                return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+            };
+
+            const getAppIcon = (appName) => {
+                const apps = {
+                    'Chrome': '🌐',
+                    'VS Code': '💻',
+                    'YouTube': '▶️',
+                    'Slack': '💬',
+                    'Discord': '🎮',
+                    'Spotify': '🎵',
+                    'Notion': '📝',
+                    'Zoom': '📹',
+                    'default': '🖥️'
+                };
+                return apps[appName] || apps['default'];
+            };
+
+            return (
+                <div className={`student-card glass-card rounded-xl p-4 fade-in ${student.has_violation ? 'violation-card' : ''}`}>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-lg font-bold">
+                                {student.student_name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-white">{student.student_name}</h3>
+                                <div className="flex items-center gap-1 text-sm text-gray-400">
+                                    <Icons.Clock />
+                                    <span>Joined {timeAgo}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className={`w-3 h-3 rounded-full ${student.has_violation ? 'bg-red-500' : 'bg-green-500'} status-dot`}></div>
+                    </div>
+                    
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div className="bg-slate-800/50 rounded-lg p-3">
+                            <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
+                                <Icons.Monitor />
+                                <span>Current App</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg">{getAppIcon(student.current_app)}</span>
+                                <span className="font-medium text-white text-sm">{student.current_app}</span>
+                            </div>
+                        </div>
+                        <div className="bg-slate-800/50 rounded-lg p-3">
+                            <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
+                                <Icons.Activity />
+                                <span>Total Time</span>
+                            </div>
+                            <span className="font-medium text-white">{formatUsageTime(student.total_usage_minutes)}</span>
+                        </div>
+                    </div>
+                    
+                    {student.violations > 0 && (
+                        <div className="mt-3 bg-red-500/10 border border-red-500/30 rounded-lg p-2 flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-red-400">
+                                <Icons.Alert />
+                                <span className="text-sm">Violations: {student.violations}</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Main Dashboard Component
+        function Dashboard() {
+            const [classId, setClassId] = useState('');
+            const [classCode, setClassCode] = useState('');
+            const [students, setStudents] = useState([]);
+            const [totalActive, setTotalActive] = useState(0);
+            const [loading, setLoading] = useState(false);
+            const [lastUpdate, setLastUpdate] = useState(null);
+            const [socket, setSocket] = useState(null);
+
+            // Initialize WebSocket connection
+            useEffect(() => {
+                const newSocket = io('http://127.0.0.1:5050');
+                setSocket(newSocket);
+
+                newSocket.on('connect', () => {
+                    console.log('Connected to WebSocket');
+                });
+
+                newSocket.on('student_joined', (data) => {
+                    fetchStudents();
+                });
+
+                newSocket.on('student_left', (data) => {
+                    fetchStudents();
+                });
+
+                newSocket.on('violation', (data) => {
+                    fetchStudents();
+                });
+
+                newSocket.on('app_update', (data) => {
+                    fetchStudents();
+                });
+
+                return () => {
+                    newSocket.disconnect();
+                };
+            }, []);
+
+            // Auto-refresh polling as fallback
+            useEffect(() => {
+                if (!classId) return;
+                
+                const interval = setInterval(fetchStudents, 5000);
+                return () => clearInterval(interval);
+            }, [classId]);
+
+            const fetchStudents = async () => {
+                if (!classId) return;
+                
+                try {
+                    const response = await fetch(`http://127.0.0.1:5050/api/dashboard/${classId}`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Sort by join time (latest first)
+                        const sortedStudents = data.students.sort((a, b) => 
+                            new Date(b.joined_time) - new Date(a.joined_time)
+                        );
+                        setStudents(sortedStudents);
+                        setTotalActive(data.total_active);
+                        setLastUpdate(new Date());
+                    }
+                } catch (error) {
+                    console.error('Error fetching students:', error);
+                }
+            };
+
+            const handleClassSubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                
+                try {
+                    // First try to find class by ID
+                    let classIdNum = parseInt(classId);
+                    if (isNaN(classIdNum)) {
+                        // Try by class code
+                        const response = await fetch(`http://127.0.0.1:5050/get_class/${classId}`);
+                        const data = await response.json();
+                        if (data.success) {
+                            classIdNum = data.class.id;
+                            setClassCode(data.class.class_code);
+                        }
+                    }
+                    
+                    setClassId(classIdNum);
+                    
+                    // Fetch initial data
+                    const response = await fetch(`http://127.0.0.1:5050/api/dashboard/${classIdNum}`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const sortedStudents = data.students.sort((a, b) => 
+                            new Date(b.joined_time) - new Date(a.joined_time)
+                        );
+                        setStudents(sortedStudents);
+                        setTotalActive(data.total_active);
+                        setLastUpdate(new Date());
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const formatLastUpdate = () => {
+                if (!lastUpdate) return '';
+                return lastUpdate.toLocaleTimeString();
+            };
+
+            return (
+                <div className="min-h-screen p-6">
+                    {/* Header */}
+                    <div className="max-w-7xl mx-auto mb-8">
+                        <div className="glass-card rounded-2xl p-6">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div>
+                                    <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                                        Student Monitoring Dashboard
+                                    </h1>
+                                    <p className="text-gray-400 text-sm mt-1">Real-time classroom supervision</p>
+                                </div>
+                                
+                                {/* Class Input */}
+                                <form onSubmit={handleClassSubmit} className="flex gap-3">
+                                    <input
+                                        type="text"
+                                        value={classId}
+                                        onChange={(e) => setClassId(e.target.value)}
+                                        placeholder="Enter Class ID or Code"
+                                        className="bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-2 rounded-lg font-medium hover:opacity-90 disabled:opacity-50"
+                                    >
+                                        {loading ? 'Loading...' : 'Connect'}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Stats & Students */}
+                    <div className="max-w-7xl mx-auto">
+                        {classId ? (
+                            <>
+                                {/* Stats Bar */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                                    <div className="glass-card rounded-xl p-4 flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
+                                            <Icons.Users />
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-400 text-sm">Active Students</p>
+                                            <p className="text-2xl font-bold text-white">{totalActive}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="glass-card rounded-xl p-4 flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
+                                            <Icons.Activity />
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-400 text-sm">Last Update</p>
+                                            <p className="text-lg font-medium text-white">{formatLastUpdate() || '—'}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="glass-card rounded-xl p-4 flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
+                                            <Icons.Refresh />
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-400 text-sm">Connection</p>
+                                            <p className="text-lg font-medium text-green-400">Live</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Student Grid */}
+                                {students.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {students.map((student, index) => (
+                                            <StudentCard 
+                                                key={student.student_id} 
+                                                student={student}
+                                            />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="glass-card rounded-xl p-12 text-center">
+                                        <div className="w-16 h-16 rounded-full bg-slate-700 flex items-center justify-center mx-auto mb-4">
+                                            <Icons.Users />
+                                        </div>
+                                        <h3 className="text-xl font-semibold text-white mb-2">No Active Students</h3>
+                                        <p className="text-gray-400">Students will appear here when they join the class</p>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <div className="glass-card rounded-xl p-12 text-center">
+                                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-6">
+                                    <Icons.Users />
+                                </div>
+                                <h2 className="text-2xl font-bold text-white mb-3">Welcome to Student Monitoring Dashboard</h2>
+                                <p className="text-gray-400 max-w-md mx-auto mb-6">
+                                    Enter a Class ID or Class Code to start monitoring students in real-time.
+                                    All data is fetched dynamically from the backend database.
+                                </p>
+                                <div className="flex justify-center gap-4 text-sm text-gray-500">
+                                    <span className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                        Real-time updates
+                                    </span>
+                                    <span className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                        WebSocket enabled
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Dashboard />);
+    </script>
+</body>
+</html>
